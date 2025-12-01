@@ -228,21 +228,21 @@ function fetchWeatherData() {
     const weatherData = [
         {
             location: 'Santa Monica',
-            temp: 72,
+            temp: 22,
             description: 'Sunny',
             icon: '☀️',
             condition: 'Perfect for cleanup!',
         },
         {
             location: 'Malibu',
-            temp: 68,
+            temp: 20,
             description: 'Partly Cloudy',
             icon: '⛅',
             condition: 'Ideal conditions',
         },
         {
             location: 'Long Beach',
-            temp: 65,
+            temp: 18,
             description: 'Cloudy',
             icon: '☁️',
             condition: 'Bring a light jacket',
@@ -257,7 +257,7 @@ function fetchWeatherData() {
     const cities = ['Los Angeles', 'Malibu', 'Santa Monica'];
     
     cities.forEach(city => {
-        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=imperial`)
+        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`)
             .then(res => res.json())
             .then(data => renderWeatherCard(data))
             .catch(err => console.error('Weather fetch error:', err));
@@ -275,7 +275,7 @@ function renderWeather(weatherData) {
         card.innerHTML = `
             <div class="weather-icon">${weather.icon}</div>
             <div class="weather-location">${weather.location}</div>
-            <div class="weather-temp">${weather.temp}°F</div>
+            <div class="weather-temp">${weather.temp}°C</div>
             <div class="weather-description">${weather.description}</div>
             <div class="weather-condition" aria-label="Weather condition">${weather.condition}</div>
         `;
@@ -525,10 +525,10 @@ if ('serviceWorker' in navigator) {
  * @param {number} lon1 - First longitude
  * @param {number} lat2 - Second latitude
  * @param {number} lon2 - Second longitude
- * @returns {number} Distance in miles
+ * @returns {number} Distance in kilometers
  */
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 3959; // Earth's radius in miles
+    const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
