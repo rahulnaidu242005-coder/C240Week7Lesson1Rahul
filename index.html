@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ShoreSquad - Rally your crew, track weather, and hit the next beach cleanup with our dope map app!">
+    <meta name="theme-color" content="#0077BE">
+    <title>ShoreSquad - Beach Cleanup & Weather Tracking</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <!-- Leaflet Map Library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header" role="banner">
+        <nav class="navbar" role="navigation" aria-label="Main navigation">
+            <div class="navbar-container">
+                <a href="#" class="logo" aria-label="ShoreSquad Home">
+                    <span class="logo-icon">🌊</span>
+                    <span class="logo-text">ShoreSquad</span>
+                </a>
+                <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" id="navToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-menu" id="navMenu" role="list">
+                    <li role="listitem"><a href="#map-section">Map</a></li>
+                    <li role="listitem"><a href="#weather-section">Weather</a></li>
+                    <li role="listitem"><a href="#events-section">Events</a></li>
+                    <li role="listitem"><a href="#impact-section">Impact</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" role="region" aria-label="Welcome section">
+        <div class="hero-content">
+            <h1>Rally Your Crew</h1>
+            <p class="tagline">Track weather, hit the beach cleanup, and make eco-action fun</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" id="createEventBtn" aria-label="Create a new beach cleanup event">
+                    Create Event
+                </button>
+                <button class="btn btn-secondary" id="exploreBtn" aria-label="Explore nearby cleanup events">
+                    Explore Cleanups
+                </button>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="wave wave1"></div>
+            <div class="wave wave2"></div>
+        </div>
+    </section>
+
+    <!-- Map Section -->
+    <section id="map-section" class="map-section" role="region" aria-label="Interactive map">
+        <h2>Find Cleanups Near You</h2>
+        <div id="map" class="map-container"></div>
+        <div class="map-controls">
+            <button class="control-btn" id="locateBtn" aria-label="Find my location">
+                📍 My Location
+            </button>
+            <button class="control-btn" id="filterBtn" aria-label="Filter events">
+                🔍 Filter
+            </button>
+        </div>
+    </section>
+
+    <!-- Weather Section -->
+    <section id="weather-section" class="weather-section" role="region" aria-label="Weather information">
+        <h2>Check the Weather</h2>
+        <div class="weather-cards" id="weatherCards">
+            <div class="weather-card loading" aria-label="Loading weather data">
+                <div class="skeleton"></div>
+            </div>
+        </div>
+        <p class="weather-note">💡 Plan your cleanup when the weather cooperates!</p>
+    </section>
+
+    <!-- Events Section -->
+    <section id="events-section" class="events-section" role="region" aria-label="Upcoming cleanup events">
+        <h2>Upcoming Cleanups</h2>
+        <div class="events-container">
+            <div class="event-filters" role="toolbar" aria-label="Event filters">
+                <button class="filter-tag active" data-filter="all">All</button>
+                <button class="filter-tag" data-filter="today">Today</button>
+                <button class="filter-tag" data-filter="week">This Week</button>
+                <button class="filter-tag" data-filter="month">This Month</button>
+            </div>
+            <div class="events-list" id="eventsList" role="list">
+                <div class="event-card loading" aria-label="Loading events">
+                    <div class="skeleton"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Section -->
+    <section id="impact-section" class="impact-section" role="region" aria-label="Community impact statistics">
+        <h2>Our Impact</h2>
+        <div class="impact-grid">
+            <div class="impact-card" aria-label="Total cleanups completed">
+                <div class="impact-number" id="cleanupCount">1,247</div>
+                <div class="impact-label">Cleanups Organized</div>
+            </div>
+            <div class="impact-card" aria-label="Total volunteers">
+                <div class="impact-number" id="volunteerCount">8,931</div>
+                <div class="impact-label">Volunteers Joined</div>
+            </div>
+            <div class="impact-card" aria-label="Total waste collected">
+                <div class="impact-number" id="wasteCount">47.2T</div>
+                <div class="impact-label">Waste Collected</div>
+            </div>
+            <div class="impact-card" aria-label="Beaches cleaned">
+                <div class="impact-number" id="beachCount">156</div>
+                <div class="impact-label">Beaches Cleaned</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call-to-Action Section -->
+    <section class="cta-section" role="region" aria-label="Call to action">
+        <h2>Ready to Make a Difference?</h2>
+        <p>Join ShoreSquad and be part of a movement to keep our oceans clean</p>
+        <button class="btn btn-primary btn-large" id="joinBtn" aria-label="Join ShoreSquad">
+            Join the Movement
+        </button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="footer-content">
+            <p>&copy; 2024 ShoreSquad. All rights reserved.</p>
+            <ul class="footer-links" role="list">
+                <li role="listitem"><a href="#">Privacy Policy</a></li>
+                <li role="listitem"><a href="#">Terms of Service</a></li>
+                <li role="listitem"><a href="#">Contact</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal" role="dialog" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-content">
+            <button class="modal-close" aria-label="Close modal">&times;</button>
+            <h2 id="modalTitle">Create a Cleanup Event</h2>
+            <form id="eventForm" class="event-form">
+                <div class="form-group">
+                    <label for="eventName">Event Name *</label>
+                    <input type="text" id="eventName" name="eventName" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventDate">Date *</label>
+                    <input type="date" id="eventDate" name="eventDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventTime">Time *</label>
+                    <input type="time" id="eventTime" name="eventTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Beach Location *</label>
+                    <input type="text" id="eventLocation" name="eventLocation" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventDescription">Description</label>
+                    <textarea id="eventDescription" name="eventDescription" rows="4"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Event</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-hidden="true"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="js/app.js" defer></script>
+</body>
+</html>

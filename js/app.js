@@ -1,0 +1,595 @@
+// ============================================
+// ShoreSquad - Main Application Script
+// Features: Maps, Weather, Events, Notifications
+// ============================================
+
+// ============================================
+// STATE MANAGEMENT
+// ============================================
+
+const AppState = {
+    events: [],
+    userLocation: null,
+    map: null,
+    markers: [],
+    selectedFilter: 'all',
+    isDarkMode: false,
+};
+
+// Sample events data (will be replaced with API calls)
+const MOCK_EVENTS = [
+    {
+        id: 1,
+        name: 'Santa Monica Cleanup',
+        location: 'Santa Monica Beach',
+        date: '2024-12-10',
+        time: '09:00',
+        icon: '🌊',
+        participants: 24,
+        description: 'Join us for a morning cleanup at Santa Monica Beach!',
+        lat: 34.0195,
+        lng: -118.4912,
+        category: 'beach',
+    },
+    {
+        id: 2,
+        name: 'Venice Beach Eco-Drive',
+        location: 'Venice Beach',
+        date: '2024-12-12',
+        time: '10:00',
+        icon: '🏖️',
+        participants: 31,
+        description: 'Weekend cleanup and ocean awareness event',
+        lat: 33.9850,
+        lng: -118.4695,
+        category: 'beach',
+    },
+    {
+        id: 3,
+        name: 'Malibu Beach Revival',
+        location: 'Malibu Beach',
+        date: '2024-12-15',
+        time: '08:00',
+        icon: '🌅',
+        participants: 18,
+        description: 'Early morning cleanup before the crowds',
+        lat: 34.0314,
+        lng: -118.6819,
+        category: 'beach',
+    },
+];
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+});
+
+function initializeApp() {
+    console.log('🚀 Initializing ShoreSquad...');
+
+    // Initialize features
+    setupNavigation();
+    setupEventListeners();
+    initializeMap();
+    fetchWeatherData();
+    loadEvents();
+    checkDarkModePreference();
+
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err =>
+            console.log('SW registration failed:', err)
+        );
+    }
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+
+function setupNavigation() {
+    const navToggle = document.getElementById('navToggle');
+    const navMenu = document.getElementById('navMenu');
+
+    if (navToggle) {
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            navToggle.setAttribute('aria-expanded', navMenu.classList.contains('active'));
+        });
+
+        // Close menu when a link is clicked
+        navMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                navToggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+    }
+
+    // Close menu on window resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) {
+            navMenu.classList.remove('active');
+        }
+    });
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+function setupEventListeners() {
+    // Buttons
+    document.getElementById('createEventBtn')?.addEventListener('click', openEventModal);
+    document.getElementById('exploreBtn')?.addEventListener('click', () => {
+        document.getElementById('events-section').scrollIntoView({ behavior: 'smooth' });
+    });
+    document.getElementById('locateBtn')?.addEventListener('click', getUserLocation);
+    document.getElementById('filterBtn')?.addEventListener('click', toggleFilterPanel);
+    document.getElementById('joinBtn')?.addEventListener('click', handleJoinMovement);
+
+    // Event filters
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+        tag.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            e.target.classList.add('active');
+            AppState.selectedFilter = e.target.dataset.filter;
+            renderEvents();
+        });
+    });
+
+    // Modal
+    const eventModal = document.getElementById('eventModal');
+    const modalClose = eventModal?.querySelector('.modal-close');
+    const eventForm = document.getElementById('eventForm');
+
+    modalClose?.addEventListener('click', closeEventModal);
+    eventModal?.addEventListener('click', (e) => {
+        if (e.target === eventModal) closeEventModal();
+    });
+    eventForm?.addEventListener('submit', handleEventFormSubmit);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeEventModal();
+    });
+}
+
+// ============================================
+// MAP FUNCTIONALITY
+// ============================================
+
+function initializeMap() {
+    // Create map with Leaflet
+    AppState.map = L.map('map').setView([34.0522, -118.2437], 11); // Los Angeles default
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(AppState.map);
+
+    // Load events on map
+    loadEventsOnMap();
+
+    // Get user location
+    getUserLocation();
+}
+
+function loadEventsOnMap() {
+    // Clear existing markers
+    AppState.markers.forEach(marker => AppState.map.removeLayer(marker));
+    AppState.markers = [];
+
+    // Add markers for each event
+    MOCK_EVENTS.forEach(event => {
+        const marker = L.circleMarker([event.lat, event.lng], {
+            radius: 8,
+            fillColor: '#0077BE',
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8,
+        }).addTo(AppState.map);
+
+        marker.bindPopup(`
+            <div class="map-popup">
+                <h3>${event.name}</h3>
+                <p>${event.location}</p>
+                <p><strong>${event.date}</strong> at ${event.time}</p>
+                <p>${event.participants} participants</p>
+            </div>
+        `);
+
+        marker.on('click', () => scrollToEvent(event.id));
+        AppState.markers.push(marker);
+    });
+}
+
+function getUserLocation() {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                AppState.userLocation = { latitude, longitude };
+
+                // Center map on user
+                if (AppState.map) {
+                    AppState.map.setView([latitude, longitude], 13);
+
+                    // Add user marker
+                    L.circleMarker([latitude, longitude], {
+                        radius: 10,
+                        fillColor: '#FFB81C',
+                        color: '#fff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 1,
+                    }).addTo(AppState.map).bindPopup('📍 Your Location');
+                }
+
+                showToast('Location found! ✨');
+            },
+            (error) => {
+                console.warn('Geolocation error:', error);
+                showToast('Unable to get location. Using default.', 'warning');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+            }
+        );
+    } else {
+        showToast('Geolocation not supported in your browser', 'error');
+    }
+}
+
+function toggleFilterPanel() {
+    showToast('Filter panel coming soon! 🔍');
+}
+
+function scrollToEvent(eventId) {
+    const eventElement = document.querySelector(`[data-event-id="${eventId}"]`);
+    eventElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ============================================
+// WEATHER FUNCTIONALITY
+// ============================================
+
+function fetchWeatherData() {
+    // Mock weather data (replace with real API call)
+    const weatherData = [
+        {
+            location: 'Santa Monica',
+            temp: 72,
+            description: 'Sunny',
+            icon: '☀️',
+            condition: 'Perfect for cleanup!',
+        },
+        {
+            location: 'Malibu',
+            temp: 68,
+            description: 'Partly Cloudy',
+            icon: '⛅',
+            condition: 'Ideal conditions',
+        },
+        {
+            location: 'Long Beach',
+            temp: 65,
+            description: 'Cloudy',
+            icon: '☁️',
+            condition: 'Bring a light jacket',
+        },
+    ];
+
+    renderWeather(weatherData);
+
+    // Real API call example (commented)
+    /*
+    const API_KEY = 'your_openweather_api_key';
+    const cities = ['Los Angeles', 'Malibu', 'Santa Monica'];
+    
+    cities.forEach(city => {
+        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=imperial`)
+            .then(res => res.json())
+            .then(data => renderWeatherCard(data))
+            .catch(err => console.error('Weather fetch error:', err));
+    });
+    */
+}
+
+function renderWeather(weatherData) {
+    const weatherCards = document.getElementById('weatherCards');
+    weatherCards.innerHTML = '';
+
+    weatherData.forEach(weather => {
+        const card = document.createElement('div');
+        card.className = 'weather-card';
+        card.innerHTML = `
+            <div class="weather-icon">${weather.icon}</div>
+            <div class="weather-location">${weather.location}</div>
+            <div class="weather-temp">${weather.temp}°F</div>
+            <div class="weather-description">${weather.description}</div>
+            <div class="weather-condition" aria-label="Weather condition">${weather.condition}</div>
+        `;
+        weatherCards.appendChild(card);
+    });
+}
+
+// ============================================
+// EVENTS FUNCTIONALITY
+// ============================================
+
+function loadEvents() {
+    AppState.events = MOCK_EVENTS;
+    renderEvents();
+}
+
+function renderEvents() {
+    const eventsList = document.getElementById('eventsList');
+    eventsList.innerHTML = '';
+
+    let filteredEvents = AppState.events;
+
+    // Apply filter
+    if (AppState.selectedFilter !== 'all') {
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+        filteredEvents = AppState.events.filter(event => {
+            const eventDate = new Date(event.date);
+            switch (AppState.selectedFilter) {
+                case 'today':
+                    return eventDate.toDateString() === today.toDateString();
+                case 'week':
+                    return eventDate <= nextWeek && eventDate >= today;
+                case 'month':
+                    return eventDate <= nextMonth && eventDate >= today;
+                default:
+                    return true;
+            }
+        });
+    }
+
+    if (filteredEvents.length === 0) {
+        eventsList.innerHTML = '<p class="no-events">No events found. Create one to get started! 🌊</p>';
+        return;
+    }
+
+    filteredEvents.forEach(event => {
+        const card = createEventCard(event);
+        eventsList.appendChild(card);
+    });
+}
+
+function createEventCard(event) {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.dataset.eventId = event.id;
+
+    const daysUntil = Math.ceil(
+        (new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24)
+    );
+    const urgencyBadge = daysUntil === 0 ? 'TODAY' : `${daysUntil}d`;
+
+    card.innerHTML = `
+        <div class="event-image">${event.icon}</div>
+        <div class="event-content">
+            <div class="event-header">
+                <div class="event-name">${event.name}</div>
+                <div class="event-location">📍 ${event.location}</div>
+                <div class="event-meta">
+                    <span>📅 ${event.date}</span>
+                    <span>🕐 ${event.time}</span>
+                </div>
+            </div>
+            <div class="event-footer">
+                <div class="event-participants">${event.participants} volunteers interested</div>
+                <button class="btn btn-primary" onclick="joinEvent(${event.id})" aria-label="Join ${event.name}">
+                    Join Crew
+                </button>
+            </div>
+        </div>
+        <div class="event-badge">${urgencyBadge}</div>
+    `;
+
+    return card;
+}
+
+function joinEvent(eventId) {
+    const event = AppState.events.find(e => e.id === eventId);
+    if (event) {
+        event.participants += 1;
+        showToast(`✨ You joined "${event.name}"! Welcome to the crew!`);
+        renderEvents();
+        loadEventsOnMap();
+    }
+}
+
+// ============================================
+// MODAL FUNCTIONALITY
+// ============================================
+
+function openEventModal() {
+    const modal = document.getElementById('eventModal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('eventName')?.focus();
+    }
+}
+
+function closeEventModal() {
+    const modal = document.getElementById('eventModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+        document.getElementById('eventForm')?.reset();
+    }
+}
+
+function handleEventFormSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const newEvent = {
+        id: AppState.events.length + 1,
+        name: formData.get('eventName'),
+        location: formData.get('eventLocation'),
+        date: formData.get('eventDate'),
+        time: formData.get('eventTime'),
+        icon: '🌊',
+        participants: 1,
+        description: formData.get('eventDescription'),
+        lat: AppState.userLocation?.latitude || 34.0522,
+        lng: AppState.userLocation?.longitude || -118.2437,
+        category: 'beach',
+    };
+
+    AppState.events.unshift(newEvent);
+    renderEvents();
+    loadEventsOnMap();
+    closeEventModal();
+
+    showToast(`🎉 Event "${newEvent.name}" created successfully!`);
+}
+
+// ============================================
+// USER INTERACTIONS
+// ============================================
+
+function handleJoinMovement() {
+    showToast('🌍 Thanks for joining the movement! Check out our events!', 'success');
+    setTimeout(() => {
+        document.getElementById('events-section').scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.className = `toast show`;
+    toast.style.backgroundColor =
+        type === 'error' ? '#E74C3C' :
+        type === 'warning' ? '#FFB81C' :
+        '#2ECC71';
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// ============================================
+// DARK MODE
+// ============================================
+
+function checkDarkModePreference() {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        AppState.isDarkMode = true;
+        document.documentElement.style.colorScheme = 'dark';
+    }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        AppState.isDarkMode = e.matches;
+        document.documentElement.style.colorScheme = e.matches ? 'dark' : 'light';
+    });
+}
+
+// ============================================
+// PERFORMANCE OPTIMIZATION
+// ============================================
+
+// Lazy load images when they come into view
+if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                observer.unobserve(img);
+            }
+        });
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
+}
+
+// Debounce function for window resize events
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// ============================================
+// SERVICE WORKER PLACEHOLDER
+// ============================================
+
+// Create basic service worker file
+if ('serviceWorker' in navigator) {
+    // Service worker will be loaded from sw.js
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Calculate distance between two coordinates using Haversine formula
+ * @param {number} lat1 - First latitude
+ * @param {number} lon1 - First longitude
+ * @param {number} lat2 - Second latitude
+ * @param {number} lon2 - Second longitude
+ * @returns {number} Distance in miles
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+/**
+ * Format date to readable string
+ * @param {string} dateString - Date in YYYY-MM-DD format
+ * @returns {string} Formatted date
+ */
+function formatDate(dateString) {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+// ============================================
+// CONSOLE MESSAGES
+// ============================================
+
+console.log('%c🌊 Welcome to ShoreSquad!', 'font-size: 20px; color: #0077BE; font-weight: bold;');
+console.log('%cRally your crew, track weather, and hit the next beach cleanup!', 'font-size: 14px; color: #00A8E8;');

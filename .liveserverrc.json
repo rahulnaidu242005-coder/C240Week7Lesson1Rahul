@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "name": "ShoreSquad",
+  "port": 5500,
+  "host": "127.0.0.1",
+  "root": "/",
+  "ignore": [
+    "node_modules",
+    ".git",
+    ".gitignore",
+    ".DS_Store"
+  ],
+  "file": "index.html",
+  "wait": 1000,
+  "mount": [],
+  "showUrl": false,
+  "nonStandard": [],
+  "https": false,
+  "proxy": [
+    {
+      "source": "/api",
+      "target": "http://localhost:3000"
+    }
+  ],
+  "middleware": [
+    null
+  ]
+}

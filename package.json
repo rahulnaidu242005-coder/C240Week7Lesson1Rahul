@@ -1,0 +1,38 @@
+{
+  "name": "shoresquad",
+  "version": "0.1.0",
+  "description": "ShoreSquad - Rally your crew, track weather, and hit the next beach cleanup with our dope map app!",
+  "main": "index.html",
+  "scripts": {
+    "start": "live-server",
+    "dev": "live-server --port=8000",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"Build script - minify CSS/JS files here\"",
+    "lint": "eslint js/",
+    "format": "prettier --write \"**/*.{js,css,html,json}\""
+  },
+  "keywords": [
+    "beach",
+    "cleanup",
+    "environment",
+    "map",
+    "weather",
+    "youth",
+    "eco-action"
+  ],
+  "author": "ShoreSquad Team",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
