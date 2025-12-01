@@ -130,6 +130,7 @@ function setupEventListeners() {
     document.getElementById('locateBtn')?.addEventListener('click', getUserLocation);
     document.getElementById('filterBtn')?.addEventListener('click', toggleFilterPanel);
     document.getElementById('joinBtn')?.addEventListener('click', handleJoinMovement);
+    document.getElementById('refreshWeatherBtn')?.addEventListener('click', fetchWeatherData);
 
     // Event filters
     document.querySelectorAll('.filter-tag').forEach(tag => {
@@ -224,45 +225,20 @@ function scrollToEvent(eventId) {
 // ============================================
 
 function fetchWeatherData() {
-    // Mock weather data (replace with real API call)
-    const weatherData = [
-        {
-            location: 'Santa Monica',
-            temp: 22,
-            description: 'Sunny',
-            icon: '☀️',
-            condition: 'Perfect for cleanup!',
-        },
-        {
-            location: 'Malibu',
-            temp: 20,
-            description: 'Partly Cloudy',
-            icon: '⛅',
-            condition: 'Ideal conditions',
-        },
-        {
-            location: 'Long Beach',
-            temp: 18,
-            description: 'Cloudy',
-            icon: '☁️',
-            condition: 'Bring a light jacket',
-        },
-    ];
-
-    renderWeather(weatherData);
-
-    // Real API call example (commented)
-    /*
-    const API_KEY = 'your_openweather_api_key';
-    const cities = ['Los Angeles', 'Malibu', 'Santa Monica'];
+    // Fetch weather data from NEA API (Singapore)
+    const NEA_API_URL = 'https://api.data.gov.sg/v1/environment/4-day-weather-forecast';
     
-    cities.forEach(city => {
-        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`)
-            .then(res => res.json())
-            .then(data => renderWeatherCard(data))
-            .catch(err => console.error('Weather fetch error:', err));
-    });
-    */
+    fetch(NEA_API_URL)
+        .then(res => res.json())
+        .then(data => {
+            console.log('🌤️ NEA Weather Data:', data);
+            renderWeatherForecast(data);
+        })
+        .catch(err => {
+            console.error('Weather fetch error:', err);
+            renderMockWeather();
+            showToast('Using demo weather data', 'warning');
+        });
 }
 
 function renderWeather(weatherData) {
@@ -278,6 +254,125 @@ function renderWeather(weatherData) {
             <div class="weather-temp">${weather.temp}°C</div>
             <div class="weather-description">${weather.description}</div>
             <div class="weather-condition" aria-label="Weather condition">${weather.condition}</div>
+        `;
+        weatherCards.appendChild(card);
+    });
+}
+
+// ============================================
+// WEATHER FORECAST RENDERING
+// ============================================
+
+function renderWeatherForecast(data) {
+    const weatherCards = document.getElementById('weatherCards');
+    weatherCards.innerHTML = '';
+
+    if (!data.items || data.items.length === 0) {
+        renderMockWeather();
+        return;
+    }
+
+    // Get first 4 items from forecast
+    const forecasts = data.items.slice(0, 4);
+    
+    forecasts.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'weather-card';
+        
+        const forecastDate = new Date(item.valid_period.start);
+        const dayName = forecastDate.toLocaleDateString('en-SG', { weekday: 'short' });
+        const dateStr = forecastDate.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+        
+        // Map weather condition to emoji
+        const weatherIcon = getWeatherIcon(item.forecast);
+        
+        card.innerHTML = `
+            <div class="weather-date">${dateStr}</div>
+            <div class="weather-day">${dayName}</div>
+            <div class="weather-icon">${weatherIcon}</div>
+            <div class="weather-description">${item.forecast}</div>
+            <div class="weather-temp-range">
+                ${item.temperature.low}°C - ${item.temperature.high}°C
+            </div>
+            <div class="weather-humidity">
+                💧 Humidity: ${item.relative_humidity.low}% - ${item.relative_humidity.high}%
+            </div>
+        `;
+        
+        weatherCards.appendChild(card);
+    });
+}
+
+function getWeatherIcon(forecast) {
+    // Map NEA weather conditions to emojis
+    const forecastLower = forecast.toLowerCase();
+    
+    if (forecastLower.includes('rain')) return '🌧️';
+    if (forecastLower.includes('thunderstorm')) return '⛈️';
+    if (forecastLower.includes('cloudy') || forecastLower.includes('overcast')) return '☁️';
+    if (forecastLower.includes('partly') || forecastLower.includes('fair')) return '⛅';
+    if (forecastLower.includes('clear') || forecastLower.includes('sunny')) return '☀️';
+    if (forecastLower.includes('windy')) return '💨';
+    if (forecastLower.includes('haze')) return '😶';
+    return '🌤️';
+}
+
+function renderMockWeather() {
+    // Mock weather data for demonstration
+    const mockData = [
+        {
+            date: new Date(),
+            day: 'Today',
+            temp: 28,
+            range: '24°C - 32°C',
+            forecast: 'Partly Cloudy',
+            humidity: '60% - 80%',
+            icon: '⛅',
+        },
+        {
+            date: new Date(Date.now() + 86400000),
+            day: 'Tomorrow',
+            temp: 27,
+            range: '23°C - 31°C',
+            forecast: 'Light Rain',
+            humidity: '65% - 85%',
+            icon: '🌧️',
+        },
+        {
+            date: new Date(Date.now() + 172800000),
+            day: 'Day 3',
+            temp: 26,
+            range: '22°C - 30°C',
+            forecast: 'Cloudy',
+            humidity: '70% - 90%',
+            icon: '☁️',
+        },
+        {
+            date: new Date(Date.now() + 259200000),
+            day: 'Day 4',
+            temp: 29,
+            range: '25°C - 33°C',
+            forecast: 'Sunny',
+            humidity: '50% - 70%',
+            icon: '☀️',
+        },
+    ];
+
+    const weatherCards = document.getElementById('weatherCards');
+    weatherCards.innerHTML = '';
+
+    mockData.forEach(weather => {
+        const card = document.createElement('div');
+        card.className = 'weather-card';
+        const dateStr = weather.date.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+        
+        card.innerHTML = `
+            <div class="weather-date">${dateStr}</div>
+            <div class="weather-day">${weather.day}</div>
+            <div class="weather-icon">${weather.icon}</div>
+            <div class="weather-description">${weather.forecast}</div>
+            <div class="weather-temp-range">${weather.range}</div>
+            <div class="weather-humidity">💧 Humidity: ${weather.humidity}</div>
         `;
         weatherCards.appendChild(card);
     });

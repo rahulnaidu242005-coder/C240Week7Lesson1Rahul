@@ -87,14 +87,32 @@
     </section>
 
     <!-- Weather Section -->
-    <section id="weather-section" class="weather-section" role="region" aria-label="Weather information">
-        <h2>Check the Weather</h2>
+    <section id="weather-section" class="weather-section" role="region" aria-label="Weather forecast information">
+        <h2>4-Day Weather Forecast</h2>
+        <div class="weather-header" id="weatherHeader">
+            <div class="location-info">
+                <span class="location-icon">📍</span>
+                <span class="location-name" id="locationName">Singapore</span>
+            </div>
+            <button class="refresh-btn" id="refreshWeatherBtn" aria-label="Refresh weather data">
+                🔄 Refresh
+            </button>
+        </div>
         <div class="weather-cards" id="weatherCards">
             <div class="weather-card loading" aria-label="Loading weather data">
                 <div class="skeleton"></div>
             </div>
+            <div class="weather-card loading" aria-label="Loading weather data">
+                <div class="skeleton"></div>
+            </div>
+            <div class="weather-card loading" aria-label="Loading weather data">
+                <div class="skeleton"></div>
+            </div>
+            <div class="weather-card loading" aria-label="Loading weather data">
+                <div class="skeleton"></div>
+            </div>
         </div>
-        <p class="weather-note">💡 Plan your cleanup when the weather cooperates!</p>
+        <p class="weather-note">💡 Data from NEA (National Environment Agency) Singapore</p>
     </section>
 
     <!-- Events Section -->
