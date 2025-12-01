@@ -15,6 +15,20 @@
     <section class="container">
       <p>This is a simple HTML5 project configured to work with the Live Server VS Code extension.</p>
       <button id="clickBtn">Click me</button>
+
+      <!-- Simple form to collect a message and display it in the output area -->
+      <form id="messageForm" class="simple-form" aria-label="Message form">
+        <label for="messageInput">Enter a message</label>
+        <div class="form-row">
+          <input id="messageInput" name="messageInput" type="text" placeholder="Type something…" required />
+          <button type="submit" id="sendBtn">Send</button>
+        </div>
+      </form>
+
+      <!-- Placeholder area for output; JavaScript will append messages here -->
+      <div id="output" class="output" aria-live="polite">
+        <p class="muted">No messages yet.</p>
+      </div>
     </section>
   </main>
 
