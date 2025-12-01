@@ -319,6 +319,39 @@ a:focus {
 
 .map-section h2 {
     text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.map-info-banner {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.banner-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.banner-content {
+    flex: 1;
+}
+
+.banner-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.banner-location {
+    font-size: 0.9rem;
+    opacity: 0.9;
 }
 
 .map-container {
@@ -328,6 +361,11 @@ a:focus {
     margin-bottom: 2rem;
     background: var(--light);
     position: relative;
+    overflow: hidden;
+}
+
+.google-map-iframe {
+    border-radius: var(--border-radius);
 }
 
 .map-controls {

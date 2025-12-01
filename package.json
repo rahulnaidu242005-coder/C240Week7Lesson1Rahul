@@ -27,9 +27,7 @@
     "eslint": "^8.50.0",
     "prettier": "^3.0.0"
   },
-  "dependencies": {
-    "leaflet": "^1.9.4"
-  },
+  "dependencies": {}
   "browserslist": [
     "> 1%",
     "last 2 versions",

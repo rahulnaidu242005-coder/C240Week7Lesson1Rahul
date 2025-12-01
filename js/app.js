@@ -163,50 +163,12 @@ function setupEventListeners() {
 // ============================================
 
 function initializeMap() {
-    // Create map with Leaflet
-    AppState.map = L.map('map').setView([34.0522, -118.2437], 11); // Los Angeles default
-
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-    }).addTo(AppState.map);
-
-    // Load events on map
-    loadEventsOnMap();
-
-    // Get user location
+    // Google Maps iframe is embedded directly in HTML
+    // Pasir Ris cleanup location: 1.381497°N, 103.955574°E
+    console.log('🗺️ Google Maps embedded for Pasir Ris Beach cleanup');
+    
+    // Get user location for reference
     getUserLocation();
-}
-
-function loadEventsOnMap() {
-    // Clear existing markers
-    AppState.markers.forEach(marker => AppState.map.removeLayer(marker));
-    AppState.markers = [];
-
-    // Add markers for each event
-    MOCK_EVENTS.forEach(event => {
-        const marker = L.circleMarker([event.lat, event.lng], {
-            radius: 8,
-            fillColor: '#0077BE',
-            color: '#fff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8,
-        }).addTo(AppState.map);
-
-        marker.bindPopup(`
-            <div class="map-popup">
-                <h3>${event.name}</h3>
-                <p>${event.location}</p>
-                <p><strong>${event.date}</strong> at ${event.time}</p>
-                <p>${event.participants} participants</p>
-            </div>
-        `);
-
-        marker.on('click', () => scrollToEvent(event.id));
-        AppState.markers.push(marker);
-    });
 }
 
 function getUserLocation() {
