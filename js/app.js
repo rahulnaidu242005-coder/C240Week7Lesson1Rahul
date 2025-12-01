@@ -1,6 +1,8 @@
 // ============================================
 // ShoreSquad - Main Application Script
 // Features: Maps, Weather, Events, Notifications
+// Error Handling: Comprehensive try-catch blocks
+// Loading States: Visual feedback for async operations
 // ============================================
 
 // ============================================
@@ -14,6 +16,8 @@ const AppState = {
     markers: [],
     selectedFilter: 'all',
     isDarkMode: false,
+    isLoadingWeather: false,
+    isLoadingEvents: false,
 };
 
 // Sample events data (will be replaced with API calls)
@@ -64,25 +68,37 @@ const MOCK_EVENTS = [
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+    try {
+        initializeApp();
+    } catch (error) {
+        console.error('❌ Application initialization failed:', error);
+        showErrorMessage('Failed to initialize the application. Please refresh the page.');
+    }
 });
 
 function initializeApp() {
     console.log('🚀 Initializing ShoreSquad...');
 
-    // Initialize features
-    setupNavigation();
-    setupEventListeners();
-    initializeMap();
-    fetchWeatherData();
-    loadEvents();
-    checkDarkModePreference();
+    try {
+        // Initialize features
+        setupNavigation();
+        setupEventListeners();
+        initializeMap();
+        fetchWeatherData();
+        loadEvents();
+        checkDarkModePreference();
 
-    // Register service worker for PWA
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(err =>
-            console.log('SW registration failed:', err)
-        );
+        console.log('✅ ShoreSquad initialized successfully');
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.warn('⚠️ Service Worker registration failed:', err));
+        }
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        showErrorMessage('An error occurred during initialization. Some features may not work.');
     }
 }
 
@@ -173,41 +189,42 @@ function initializeMap() {
 }
 
 function getUserLocation() {
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                AppState.userLocation = { latitude, longitude };
+    try {
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    try {
+                        const { latitude, longitude } = position.coords;
+                        AppState.userLocation = { latitude, longitude };
+                        console.log('✅ User location obtained:', { latitude, longitude });
 
-                // Center map on user
-                if (AppState.map) {
-                    AppState.map.setView([latitude, longitude], 13);
-
-                    // Add user marker
-                    L.circleMarker([latitude, longitude], {
-                        radius: 10,
-                        fillColor: '#FFB81C',
-                        color: '#fff',
-                        weight: 3,
-                        opacity: 1,
-                        fillOpacity: 1,
-                    }).addTo(AppState.map).bindPopup('📍 Your Location');
+                        showToast('📍 Location found!');
+                    } catch (error) {
+                        console.error('Error processing location:', error);
+                        showErrorMessage('Failed to process your location.');
+                    }
+                },
+                (error) => {
+                    console.warn('⚠️ Geolocation error:', error.message);
+                    const errorMap = {
+                        1: 'Permission denied. Please enable location access.',
+                        2: 'Location unavailable. Please try again.',
+                        3: 'Location request timed out.'
+                    };
+                    showToast(errorMap[error.code] || 'Unable to get location.', 'warning');
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
                 }
-
-                showToast('Location found! ✨');
-            },
-            (error) => {
-                console.warn('Geolocation error:', error);
-                showToast('Unable to get location. Using default.', 'warning');
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0,
-            }
-        );
-    } else {
-        showToast('Geolocation not supported in your browser', 'error');
+            );
+        } else {
+            showToast('Geolocation not supported in your browser', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Unexpected error in getUserLocation:', error);
+        showErrorMessage('Failed to retrieve location.');
     }
 }
 
@@ -225,20 +242,46 @@ function scrollToEvent(eventId) {
 // ============================================
 
 function fetchWeatherData() {
-    // Fetch weather data from NEA API (Singapore)
-    const NEA_API_URL = 'https://api.data.gov.sg/v1/environment/4-day-weather-forecast';
-    
-    fetch(NEA_API_URL)
-        .then(res => res.json())
-        .then(data => {
-            console.log('🌤️ NEA Weather Data:', data);
-            renderWeatherForecast(data);
-        })
-        .catch(err => {
-            console.error('Weather fetch error:', err);
-            renderMockWeather();
-            showToast('Using demo weather data', 'warning');
-        });
+    try {
+        AppState.isLoadingWeather = true;
+
+        // Fetch weather data from NEA API (Singapore)
+        const NEA_API_URL = 'https://api.data.gov.sg/v1/environment/4-day-weather-forecast';
+        
+        // Set timeout for API request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        fetch(NEA_API_URL, { signal: controller.signal })
+            .then(res => {
+                clearTimeout(timeoutId);
+                if (!res.ok) {
+                    throw new Error(`API returned status ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log('✅ NEA Weather Data received:', data);
+                renderWeatherForecast(data);
+                AppState.isLoadingWeather = false;
+            })
+            .catch(err => {
+                clearTimeout(timeoutId);
+                console.warn('⚠️ Weather API error:', err.message);
+                console.log('📋 Using mock weather data');
+                renderMockWeather();
+                AppState.isLoadingWeather = false;
+                
+                if (err.name === 'AbortError') {
+                    showToast('Weather data request timed out. Using demo data.', 'warning');
+                }
+            });
+    } catch (error) {
+        console.error('❌ Unexpected error in fetchWeatherData:', error);
+        renderMockWeather();
+        AppState.isLoadingWeather = false;
+        showErrorMessage('Failed to load weather data.');
+    }
 }
 
 function renderWeather(weatherData) {
@@ -498,27 +541,58 @@ function closeEventModal() {
 function handleEventFormSubmit(e) {
     e.preventDefault();
 
-    const formData = new FormData(e.target);
-    const newEvent = {
-        id: AppState.events.length + 1,
-        name: formData.get('eventName'),
-        location: formData.get('eventLocation'),
-        date: formData.get('eventDate'),
-        time: formData.get('eventTime'),
-        icon: '🌊',
-        participants: 1,
-        description: formData.get('eventDescription'),
-        lat: AppState.userLocation?.latitude || 34.0522,
-        lng: AppState.userLocation?.longitude || -118.2437,
-        category: 'beach',
-    };
+    try {
+        const formData = new FormData(e.target);
+        const eventName = formData.get('eventName')?.trim();
+        const eventLocation = formData.get('eventLocation')?.trim();
+        const eventDate = formData.get('eventDate');
 
-    AppState.events.unshift(newEvent);
-    renderEvents();
-    loadEventsOnMap();
-    closeEventModal();
+        // Validation
+        if (!eventName || eventName.length < 3) {
+            showErrorMessage('Event name must be at least 3 characters long.');
+            return;
+        }
 
-    showToast(`🎉 Event "${newEvent.name}" created successfully!`);
+        if (!eventLocation || eventLocation.length < 3) {
+            showErrorMessage('Event location must be at least 3 characters long.');
+            return;
+        }
+
+        if (!eventDate) {
+            showErrorMessage('Please select an event date.');
+            return;
+        }
+
+        // Check if date is in future
+        if (new Date(eventDate) < new Date()) {
+            showErrorMessage('Event date must be in the future.');
+            return;
+        }
+
+        const newEvent = {
+            id: AppState.events.length + 1,
+            name: eventName,
+            location: eventLocation,
+            date: eventDate,
+            time: formData.get('eventTime'),
+            icon: '🌊',
+            participants: 1,
+            description: formData.get('eventDescription')?.trim() || '',
+            lat: AppState.userLocation?.latitude || 1.381497,
+            lng: AppState.userLocation?.longitude || 103.955574,
+            category: 'beach',
+        };
+
+        AppState.events.unshift(newEvent);
+        renderEvents();
+        closeEventModal();
+
+        console.log('✅ Event created:', newEvent);
+        showToast(`🎉 Event "${newEvent.name}" created successfully!`);
+    } catch (error) {
+        console.error('❌ Error creating event:', error);
+        showErrorMessage('Failed to create event. Please try again.');
+    }
 }
 
 // ============================================
@@ -650,3 +724,108 @@ function formatDate(dateString) {
 
 console.log('%c🌊 Welcome to ShoreSquad!', 'font-size: 20px; color: #0077BE; font-weight: bold;');
 console.log('%cRally your crew, track weather, and hit the next beach cleanup!', 'font-size: 14px; color: #00A8E8;');
+
+// ============================================
+// ERROR HANDLING & USER FEEDBACK
+// ============================================
+
+/**
+ * Show error message to user
+ * @param {string} message - Error message to display
+ * @param {number} duration - Duration to show message (ms)
+ */
+function showErrorMessage(message, duration = 5000) {
+    try {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message show';
+        errorDiv.innerHTML = `<strong>⚠️ Error:</strong> ${message}`;
+        errorDiv.style.marginBottom = '1rem';
+
+        const mainContent = document.querySelector('main') || document.querySelector('body');
+        mainContent.insertBefore(errorDiv, mainContent.firstChild);
+
+        setTimeout(() => {
+            errorDiv.remove();
+        }, duration);
+    } catch (e) {
+        console.error('Error displaying error message:', e);
+    }
+}
+
+/**
+ * Show success message to user
+ * @param {string} message - Success message to display
+ * @param {number} duration - Duration to show message (ms)
+ */
+function showSuccessMessage(message, duration = 3000) {
+    try {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message show';
+        successDiv.innerHTML = `<strong>✅ Success:</strong> ${message}`;
+        successDiv.style.marginBottom = '1rem';
+
+        const mainContent = document.querySelector('main') || document.querySelector('body');
+        mainContent.insertBefore(successDiv, mainContent.firstChild);
+
+        setTimeout(() => {
+            successDiv.remove();
+        }, duration);
+    } catch (e) {
+        console.error('Error displaying success message:', e);
+    }
+}
+
+/**
+ * Show loading overlay
+ * @param {string} message - Loading message
+ */
+function showLoading(message = 'Loading...') {
+    try {
+        let overlay = document.getElementById('loadingOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'loadingOverlay';
+            overlay.className = 'loading-overlay';
+            overlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>${message}</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        overlay.classList.add('active');
+    } catch (e) {
+        console.error('Error showing loading overlay:', e);
+    }
+}
+
+/**
+ * Hide loading overlay
+ */
+function hideLoading() {
+    try {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    } catch (e) {
+        console.error('Error hiding loading overlay:', e);
+    }
+}
+
+// ============================================
+// GLOBAL ERROR HANDLER
+// ============================================
+
+window.addEventListener('error', (event) => {
+    console.error('🔴 Global error:', event.error);
+    if (event.error && event.error.message) {
+        showErrorMessage(`An unexpected error occurred: ${event.error.message}`);
+    }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('🔴 Unhandled promise rejection:', event.reason);
+    showErrorMessage('An unexpected error occurred. Please refresh the page.');
+});
